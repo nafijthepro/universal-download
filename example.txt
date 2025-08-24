@@ -1,0 +1,75 @@
+# AllDL - Universal Video Downloader Examples
+
+## Supported URLs Examples:
+
+### YouTube
+- https://www.youtube.com/watch?v=dQw4w9WgXcQ
+- https://youtu.be/dQw4w9WgXcQ
+- https://m.youtube.com/watch?v=dQw4w9WgXcQ
+
+### TikTok
+- https://www.tiktok.com/@username/video/1234567890
+- https://vt.tiktok.com/ZSxxxxxx/
+- https://vm.tiktok.com/ZMxxxxxx/
+
+### Instagram
+- https://www.instagram.com/p/ABC123DEF/
+- https://instagram.com/reel/ABC123DEF/
+
+### Facebook
+- https://www.facebook.com/watch/?v=1234567890
+- https://fb.watch/abc123def/
+- https://m.facebook.com/story.php?story_fbid=123&id=456
+
+### Twitter/X
+- https://twitter.com/username/status/1234567890
+- https://x.com/username/status/1234567890
+- https://mobile.twitter.com/username/status/1234567890
+
+### Pinterest
+- https://www.pinterest.com/pin/1234567890/
+- https://pin.it/abc123
+
+## API Usage Examples:
+
+### Download Video (Default Quality)
+GET /api/download?url=https://youtu.be/dQw4w9WgXcQ
+
+### Download Audio Only
+GET /api/download?url=https://youtu.be/dQw4w9WgXcQ&format=audio
+
+### Download with Specific Quality
+GET /api/download?url=https://youtu.be/dQw4w9WgXcQ&quality=720p
+
+### Get Media Information
+GET /api/info?url=https://youtu.be/dQw4w9WgXcQ
+
+## Response Examples:
+
+### Successful Download Response:
+{
+  "success": true,
+  "result": "https://your-domain.com/files/video_abc123.mp4",
+  "title": "Amazing Video Title",
+  "filename": "amazing_video_abc123.mp4",
+  "size": 15728640,
+  "format": "video",
+  "quality": "highest",
+  "platform": "YouTube"
+}
+
+### Media Info Response:
+{
+  "title": "Amazing Video Title",
+  "description": "Video description here...",
+  "duration": 180,
+  "uploader": "Channel Name",
+  "thumbnail": "https://img.youtube.com/vi/abc123/maxresdefault.jpg",
+  "formats": 12,
+  "platform": "YouTube"
+}
+
+### Error Response:
+{
+  "error": "Unsupported URL. Supported platforms: YouTube, TikTok, Instagram, Facebook, X/Twitter, Pinterest"
+}

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AllDL - Universal Video Downloader 2025</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23667eea'><path d='M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z'/></svg>" type="image/svg+xml">
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="header">
+                <div class="icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+                    </svg>
+                </div>
+                <h1>AllDL 2025</h1>
+                <p>Fast & Universal Video Downloader</p>
+                <div class="version-badge">v2.0 - Optimized for 2025</div>
+            </div>
+
+            <form id="downloadForm" class="form">
+                <div class="input-group">
+                    <label for="urlInput">
+                        <span class="label-text">Video URL</span>
+                        <span class="label-required">*</span>
+                    </label>
+                    <div class="input-wrapper">
+                        <input 
+                            type="url" 
+                            id="urlInput" 
+                            placeholder="Paste any video URL here..."
+                            required
+                            autocomplete="off"
+                        >
+                        <div class="input-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H6.99C4.24 7 2 9.24 2 12s2.24 5 4.99 5H11v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm5-6h4.01C19.76 7 22 9.24 22 12s-2.24 5-4.99 5H13v1.9h4c1.71 0 3.1-1.39 3.1-3.1s-1.39-3.1-3.1-3.1H13V7z"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="input-error" id="urlError"></div>
+                </div>
+
+                <div class="form-row">
+                    <div class="input-group">
+                        <label for="qualitySelect">
+                            <span class="label-text">Quality</span>
+                        </label>
+                        <select id="qualitySelect">
+                            <option value="highest">🔥 Highest Quality</option>
+                            <option value="high">📺 High (1080p)</option>
+                            <option value="medium">💻 Medium (720p)</option>
+                            <option value="low">📱 Low (480p)</option>
+                            <option value="lowest">⚡ Fastest (360p)</option>
+                        </select>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="formatSelect">
+                            <span class="label-text">Format</span>
+                        </label>
+                        <select id="formatSelect">
+                            <option value="video">🎬 Video (MP4)</option>
+                            <option value="audio">🎵 Audio Only</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button type="submit" id="downloadBtn" class="download-btn">
+                    <span class="btn-content">
+                        <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+                        </svg>
+                        <span class="btn-text">Download Now</span>
+                    </span>
+                    <div class="spinner" id="spinner">
+                        <div class="spinner-ring"></div>
+                    </div>
+                </button>
+            </form>
+
+            <div class="alert" id="alertBox"></div>
+
+            <div class="media-info" id="mediaInfo"></div>
+
+            <div class="features-section">
+                <h3>✨ 2025 Features</h3>
+                <div class="features-grid">
+                    <div class="feature">
+                        <div class="feature-icon">⚡</div>
+                        <div class="feature-text">Lightning Fast</div>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">🔒</div>
+                        <div class="feature-text">Secure & Private</div>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">📱</div>
+                        <div class="feature-text">Mobile Optimized</div>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon">🌍</div>
+                        <div class="feature-text">Universal Support</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="supported-platforms">
+                <h3>🎯 Supported Platforms</h3>
+                <div class="platforms">
+                    <div class="platform youtube">
+                        <div class="platform-icon">📺</div>
+                        <span>YouTube</span>
+                    </div>
+                    <div class="platform tiktok">
+                        <div class="platform-icon">🎵</div>
+                        <span>TikTok</span>
+                    </div>
+                    <div class="platform instagram">
+                        <div class="platform-icon">📸</div>
+                        <span>Instagram</span>
+                    </div>
+                    <div class="platform facebook">
+                        <div class="platform-icon">👥</div>
+                        <span>Facebook</span>
+                    </div>
+                    <div class="platform twitter">
+                        <div class="platform-icon">🐦</div>
+                        <span>X/Twitter</span>
+                    </div>
+                    <div class="platform pinterest">
+                        <div class="platform-icon">📌</div>
+                        <span>Pinterest</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

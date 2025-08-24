@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: alldl-backend
+    env: node
+    plan: free
+    buildCommand: npm install && pip install yt-dlp
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: DOWNLOADS_DIR
+        value: /tmp/downloads
+      - key: TEMP_DIR
+        value: /tmp
+      - key: MAX_FILE_SIZE
+        value: 200M
+      - key: FILE_RETENTION_HOURS
+        value: 1
+    disk:
+      name: downloads
+      mountPath: /tmp/downloads
+      sizeGB: 1
