@@ -7,7 +7,7 @@ RUN apk add --no-cache \
     ffmpeg \
     curl \
     wget \
-    && pip3 install --no-cache-dir yt-dlp
+    && pip3 install --no-cache-dir --break-system-packages yt-dlp
 
 # Verify yt-dlp installation
 RUN yt-dlp --version
@@ -39,7 +39,7 @@ EXPOSE 3000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:3000/health || exit 1
+    CMD curl -f https://uni-download.onrender.com/health || exit 1
 
 # Start the application
 CMD ["npm", "start"]
