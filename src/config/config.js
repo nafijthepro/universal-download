@@ -6,7 +6,7 @@ module.exports = {
   TEMP_DIR: process.env.TEMP_DIR || '/tmp',
   
   // File configuration
-  MAX_FILE_SIZE: process.env.MAX_FILE_SIZE || '200M',
+  MAX_FILE_SIZE: process.env.MAX_FILE_SIZE || '500M',
   FILE_RETENTION_HOURS: parseInt(process.env.FILE_RETENTION_HOURS) || 2,
   
   // Supported domains - Updated for 2025
@@ -51,7 +51,7 @@ module.exports = {
   BASE_URL: process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`,
   
   // API configuration
-  API_TIMEOUT: 180000, // 3 minutes
+  API_TIMEOUT: 300000, // 5 minutes
   DOWNLOAD_TIMEOUT: 300000, // 5 minutes
   
   // Quality mappings

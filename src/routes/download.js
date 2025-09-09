@@ -65,12 +65,22 @@ router.get('/download', async (req, res) => {
       return res.status(413).json({ error: 'File is too large to download' });
     }
     
-    if (error.message.includes('No video formats found') || error.message.includes('Video unavailable')) {
+    if (error.message.includes('No video formats found') || 
+        error.message.includes('Video unavailable') || 
+        error.message.includes('unavailable or private') ||
+        error.message.includes('not available') ||
+        error.message.includes('Sign in to confirm')) {
       return res.status(404).json({ error: 'Content not found or unavailable' });
     }
     
-    if (error.message.includes('Private video')) {
+    if (error.message.includes('Private video') || 
+        error.message.includes('Access denied') ||
+        error.message.includes('restricted')) {
       return res.status(403).json({ error: 'Cannot download private content' });
+    }
+    
+    if (error.message.includes('yt-dlp is installed')) {
+      return res.status(500).json({ error: 'Server configuration error - yt-dlp not available' });
     }
     
     res.status(500).json({ 

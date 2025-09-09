@@ -1,4 +1,3 @@
-const ytdl = require('ytdl-core');
 const fs = require('fs-extra');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
@@ -12,20 +11,8 @@ async function getMediaInfo(url, platform) {
   try {
     console.log(`Getting info for ${platform}: ${url}`);
     
-    switch (platform) {
-      case 'youtube':
-        return await getYouTubeInfo(url);
-      case 'tiktok':
-        return await getTikTokInfo(url);
-      case 'instagram':
-        return await getInstagramInfo(url);
-      case 'facebook':
-        return await getFacebookInfo(url);
-      case 'twitter':
-        return await getTwitterInfo(url);
-      default:
-        return await getGenericInfo(url);
-    }
+    // Use yt-dlp for all platforms for better reliability
+    return await getInfoWithYtDlp(url, platform);
   } catch (error) {
     console.error('Info error:', error);
     return {
@@ -40,114 +27,76 @@ async function getMediaInfo(url, platform) {
   }
 }
 
-async function getYouTubeInfo(url) {
-  try {
-    const info = await ytdl.getInfo(url);
-    const videoDetails = info.videoDetails;
+async function getInfoWithYtDlp(url, platform) {
+  return new Promise((resolve, reject) => {
+    const args = [
+      '--dump-json',
+      '--no-playlist',
+      '--no-warnings',
+      url
+    ];
     
-    return {
-      title: videoDetails.title || 'YouTube Video',
-      description: (videoDetails.description || '').substring(0, 200),
-      duration: parseInt(videoDetails.lengthSeconds) || null,
-      uploader: videoDetails.author?.name || 'Unknown',
-      thumbnail: videoDetails.thumbnails?.[0]?.url || null,
-      formats: info.formats?.length || 0,
-      platform: 'YouTube'
-    };
-  } catch (error) {
-    console.error('YouTube info error:', error);
-    return {
-      title: 'YouTube Video',
-      description: '',
-      duration: null,
-      uploader: 'YouTube User',
-      thumbnail: null,
-      formats: 1,
-      platform: 'YouTube'
-    };
-  }
-}
-
-async function getTikTokInfo(url) {
-  try {
-    const response = await axios.get(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-      },
-      timeout: 10000
+    console.log('Getting info with yt-dlp:', args.join(' '));
+    
+    const ytDlp = spawn('yt-dlp', args, {
+      stdio: ['pipe', 'pipe', 'pipe']
     });
     
-    const $ = cheerio.load(response.data);
-    const title = $('title').text() || 'TikTok Video';
+    let output = '';
+    let errorOutput = '';
     
-    return {
-      title: title.replace(' | TikTok', '').substring(0, 100),
-      description: '',
-      duration: null,
-      uploader: 'TikTok User',
-      thumbnail: null,
-      formats: 1,
-      platform: 'TikTok'
-    };
-  } catch (error) {
-    return {
-      title: 'TikTok Video',
-      description: '',
-      duration: null,
-      uploader: 'TikTok User',
-      thumbnail: null,
-      formats: 1,
-      platform: 'TikTok'
-    };
-  }
-}
-
-async function getInstagramInfo(url) {
-  return {
-    title: 'Instagram Media',
-    description: '',
-    duration: null,
-    uploader: 'Instagram User',
-    thumbnail: null,
-    formats: 1,
-    platform: 'Instagram'
-  };
-}
-
-async function getFacebookInfo(url) {
-  return {
-    title: 'Facebook Video',
-    description: '',
-    duration: null,
-    uploader: 'Facebook User',
-    thumbnail: null,
-    formats: 1,
-    platform: 'Facebook'
-  };
-}
-
-async function getTwitterInfo(url) {
-  return {
-    title: 'Twitter Video',
-    description: '',
-    duration: null,
-    uploader: 'Twitter User',
-    thumbnail: null,
-    formats: 1,
-    platform: 'Twitter'
-  };
-}
-
-async function getGenericInfo(url) {
-  return {
-    title: 'Media File',
-    description: '',
-    duration: null,
-    uploader: 'Unknown',
-    thumbnail: null,
-    formats: 1,
-    platform: 'Generic'
-  };
+    ytDlp.stdout.on('data', (data) => {
+      output += data.toString();
+    });
+    
+    ytDlp.stderr.on('data', (data) => {
+      errorOutput += data.toString();
+    });
+    
+    ytDlp.on('close', (code) => {
+      try {
+        if (code !== 0) {
+          console.error('yt-dlp info error:', errorOutput);
+          throw new Error(`Failed to get info: ${errorOutput}`);
+        }
+        
+        const info = JSON.parse(output.trim());
+        
+        resolve({
+          title: info.title || 'Media File',
+          description: (info.description || '').substring(0, 200),
+          duration: info.duration || null,
+          uploader: info.uploader || info.channel || 'Unknown',
+          thumbnail: info.thumbnail || null,
+          formats: info.formats ? info.formats.length : 1,
+          platform: platform || 'Unknown'
+        });
+        
+      } catch (error) {
+        console.error('Failed to parse yt-dlp info:', error);
+        resolve({
+          title: 'Media File',
+          description: '',
+          duration: null,
+          uploader: 'Unknown',
+          thumbnail: null,
+          formats: 1,
+          platform: platform || 'Unknown'
+        });
+      }
+    });
+    
+    ytDlp.on('error', (error) => {
+      console.error('yt-dlp spawn error:', error);
+      reject(error);
+    });
+    
+    // Timeout after 30 seconds for info
+    setTimeout(() => {
+      ytDlp.kill('SIGTERM');
+      reject(new Error('Info request timeout'));
+    }, 30000);
+  });
 }
 
 async function downloadMedia(url, options = {}) {
@@ -165,15 +114,8 @@ async function downloadMedia(url, options = {}) {
       info = { title: 'Downloaded_Media', platform: platform || 'Unknown' };
     }
     
-    let downloadResult;
-    
-    switch (platform) {
-      case 'youtube':
-        downloadResult = await downloadYouTube(url, format, quality, downloadId, info);
-        break;
-      default:
-        downloadResult = await downloadWithYtDlp(url, format, quality, downloadId, info, platform);
-    }
+    // Use yt-dlp for all downloads for better reliability
+    const downloadResult = await downloadWithYtDlp(url, format, quality, downloadId, info, platform);
     
     return downloadResult;
     
@@ -183,126 +125,24 @@ async function downloadMedia(url, options = {}) {
   }
 }
 
-async function downloadYouTube(url, format, quality, downloadId, info) {
-  return new Promise((resolve, reject) => {
-    try {
-      const safeTitle = sanitizeFilename(info.title.substring(0, 50)) || 'youtube_video';
-      const extension = format === 'audio' ? 'mp3' : 'mp4';
-      const filename = `${safeTitle}_${downloadId}.${extension}`;
-      const filepath = path.join(config.DOWNLOADS_DIR, filename);
-      
-      let ytdlOptions = {
-        quality: 'highestvideo+bestaudio/best',
-        filter: format === 'audio' ? 'audioonly' : undefined
-      };
-      
-      if (format === 'audio') {
-        ytdlOptions.quality = 'highestaudio';
-        ytdlOptions.filter = 'audioonly';
-      } else {
-        // Set quality based on user preference
-        switch (quality) {
-          case 'high':
-            ytdlOptions.quality = 'best[height<=1080]';
-            break;
-          case 'medium':
-            ytdlOptions.quality = 'best[height<=720]';
-            break;
-          case 'low':
-            ytdlOptions.quality = 'best[height<=480]';
-            break;
-          case 'lowest':
-            ytdlOptions.quality = 'worst';
-            break;
-          default:
-            ytdlOptions.quality = 'best';
-        }
-      }
-      
-      const stream = ytdl(url, ytdlOptions);
-      const writeStream = fs.createWriteStream(filepath);
-      
-      stream.pipe(writeStream);
-      
-      let downloadStarted = false;
-      
-      stream.on('info', (info) => {
-        console.log('Download started:', info.videoDetails.title);
-        downloadStarted = true;
-      });
-      
-      stream.on('error', (error) => {
-        console.error('YouTube download stream error:', error);
-        fs.remove(filepath).catch(() => {});
-        reject(new Error(`YouTube download failed: ${error.message}`));
-      });
-      
-      writeStream.on('error', (error) => {
-        console.error('Write stream error:', error);
-        fs.remove(filepath).catch(() => {});
-        reject(new Error(`File write error: ${error.message}`));
-      });
-      
-      writeStream.on('finish', async () => {
-        try {
-          const stats = await fs.stat(filepath);
-          if (stats.size === 0) {
-            await fs.remove(filepath);
-            reject(new Error('Downloaded file is empty'));
-            return;
-          }
-          
-          const baseUrl = config.BASE_URL;
-          const downloadUrl = `${baseUrl}/files/${filename}`;
-          
-          console.log(`YouTube download completed: ${filename} (${stats.size} bytes)`);
-          
-          resolve({
-            success: true,
-            result: downloadUrl,
-            title: info.title,
-            filename: filename,
-            size: stats.size,
-            format: format,
-            quality: quality,
-            platform: 'YouTube'
-          });
-        } catch (error) {
-          reject(error);
-        }
-      });
-      
-      // Timeout after 3 minutes
-      setTimeout(() => {
-        if (!downloadStarted) {
-          stream.destroy();
-          writeStream.destroy();
-          fs.remove(filepath).catch(() => {});
-          reject(new Error('Download timeout - no response from server'));
-        }
-      }, 180000);
-      
-    } catch (error) {
-      reject(new Error(`YouTube download setup error: ${error.message}`));
-    }
-  });
-}
-
 async function downloadWithYtDlp(url, format, quality, downloadId, info, platform) {
   return new Promise((resolve, reject) => {
     try {
       const safeTitle = sanitizeFilename(info.title.substring(0, 50)) || 'media_file';
-      const extension = format === 'audio' ? 'mp3' : 'mp4';
-      const filename = `${safeTitle}_${downloadId}.%(ext)s`;
-      const outputTemplate = path.join(config.DOWNLOADS_DIR, filename);
+      const timestamp = Date.now();
+      const baseFilename = `${safeTitle}_${timestamp}_${downloadId.substring(0, 8)}`;
       
       let formatSelector;
+      let outputExtension;
+      
       if (format === 'audio') {
-        formatSelector = 'bestaudio[ext=mp3]/bestaudio/best[ext=m4a]/best';
+        formatSelector = 'bestaudio[ext=m4a]/bestaudio[ext=mp3]/bestaudio/best[ext=m4a]/best';
+        outputExtension = 'm4a';
       } else {
+        outputExtension = 'mp4';
         switch (quality) {
           case 'highest':
-            formatSelector = 'best[ext=mp4]/best';
+            formatSelector = 'best[ext=mp4]/best[height<=2160]/best';
             break;
           case 'high':
             formatSelector = 'best[height<=1080][ext=mp4]/best[height<=1080]/best[ext=mp4]/best';
@@ -321,72 +161,126 @@ async function downloadWithYtDlp(url, format, quality, downloadId, info, platfor
         }
       }
       
+      const finalFilename = `${baseFilename}.${outputExtension}`;
+      const outputPath = path.join(config.DOWNLOADS_DIR, finalFilename);
+      
       const args = [
         '--format', formatSelector,
-        '--output', outputTemplate,
+        '--output', outputPath,
         '--no-playlist',
-        '--max-filesize', '200M',
-        '--socket-timeout', '30',
-        '--retries', '3',
+        '--max-filesize', '500M',
+        '--socket-timeout', '60',
+        '--retries', '5',
+        '--fragment-retries', '5',
         '--no-warnings',
+        '--no-check-certificates',
+        '--prefer-ffmpeg',
         url
       ];
       
+      // Add audio extraction for audio format
       if (format === 'audio') {
-        args.push('--extract-audio', '--audio-format', 'mp3');
+        args.push('--extract-audio');
+        args.push('--audio-format');
+        args.push('m4a');
+        args.push('--audio-quality');
+        args.push('0'); // Best quality
       }
       
-      console.log(`Using yt-dlp for ${platform}:`, args.join(' '));
+      // Add additional options for better compatibility
+      if (platform === 'youtube') {
+        args.push('--extractor-args');
+        args.push('youtube:player_client=android');
+      }
+      
+      console.log(`Using yt-dlp for ${platform}:`, args.slice(0, -1).join(' '), '[URL]');
       
       const ytDlp = spawn('yt-dlp', args, {
-        stdio: ['pipe', 'pipe', 'pipe']
+        stdio: ['pipe', 'pipe', 'pipe'],
+        env: { ...process.env, PYTHONIOENCODING: 'utf-8' }
       });
       
       let output = '';
       let errorOutput = '';
+      let downloadStarted = false;
       
       ytDlp.stdout.on('data', (data) => {
-        output += data.toString();
-        console.log('yt-dlp output:', data.toString().trim());
+        const text = data.toString();
+        output += text;
+        
+        if (text.includes('[download]') && text.includes('%')) {
+          downloadStarted = true;
+          console.log('Download progress:', text.trim());
+        }
       });
       
       ytDlp.stderr.on('data', (data) => {
-        errorOutput += data.toString();
-        console.error('yt-dlp error:', data.toString().trim());
+        const text = data.toString();
+        errorOutput += text;
+        
+        // Don't log warnings as errors
+        if (!text.includes('WARNING') && !text.includes('ffmpeg')) {
+          console.error('yt-dlp error:', text.trim());
+        }
       });
       
       ytDlp.on('close', async (code) => {
         try {
           if (code !== 0) {
-            throw new Error(`yt-dlp failed with code ${code}: ${errorOutput}`);
+            // Clean up any partial files
+            try {
+              await fs.remove(outputPath);
+            } catch (e) {}
+            
+            let errorMessage = 'Download failed';
+            
+            if (errorOutput.includes('Video unavailable')) {
+              errorMessage = 'Video is unavailable or private';
+            } else if (errorOutput.includes('Sign in to confirm')) {
+              errorMessage = 'Video requires sign-in or is age-restricted';
+            } else if (errorOutput.includes('Private video')) {
+              errorMessage = 'Cannot download private video';
+            } else if (errorOutput.includes('This video is not available')) {
+              errorMessage = 'Video is not available in your region';
+            } else if (errorOutput.includes('HTTP Error 403')) {
+              errorMessage = 'Access denied - video may be restricted';
+            } else if (errorOutput.includes('No video formats found')) {
+              errorMessage = 'No downloadable formats found';
+            } else if (errorOutput.includes('Unsupported URL')) {
+              errorMessage = 'Unsupported URL or platform';
+            }
+            
+            throw new Error(`${errorMessage} (Code: ${code})`);
           }
           
-          // Find the downloaded file
-          const files = await fs.readdir(config.DOWNLOADS_DIR);
-          const downloadedFile = files.find(file => file.includes(downloadId));
-          
-          if (!downloadedFile) {
+          // Check if file exists and has content
+          if (!await fs.pathExists(outputPath)) {
             throw new Error('Downloaded file not found');
           }
           
-          const finalPath = path.join(config.DOWNLOADS_DIR, downloadedFile);
-          const stats = await fs.stat(finalPath);
+          const stats = await fs.stat(outputPath);
           
           if (stats.size === 0) {
-            await fs.remove(finalPath);
+            await fs.remove(outputPath);
             throw new Error('Downloaded file is empty');
           }
           
-          const baseUrl = config.BASE_URL;
-          const downloadUrl = `${baseUrl}/files/${downloadedFile}`;
+          // Verify minimum file size (1KB)
+          if (stats.size < 1024) {
+            await fs.remove(outputPath);
+            throw new Error('Downloaded file is too small, likely corrupted');
+          }
           
-          console.log(`${platform} download completed: ${downloadedFile} (${stats.size} bytes)`);
+          const baseUrl = config.BASE_URL;
+          const downloadUrl = `${baseUrl}/files/${finalFilename}`;
+          
+          console.log(`${platform} download completed: ${finalFilename} (${formatFileSize(stats.size)})`);
           
           resolve({
             success: true,
             result: downloadUrl,
             title: info.title,
-            filename: downloadedFile,
+            filename: finalFilename,
             size: stats.size,
             format: format,
             quality: quality,
@@ -401,19 +295,39 @@ async function downloadWithYtDlp(url, format, quality, downloadId, info, platfor
       
       ytDlp.on('error', (error) => {
         console.error('yt-dlp spawn error:', error);
-        reject(new Error(`Failed to start yt-dlp: ${error.message}`));
+        reject(new Error(`Failed to start yt-dlp: ${error.message}. Make sure yt-dlp is installed.`));
       });
       
-      // Timeout after 5 minutes
-      setTimeout(() => {
-        ytDlp.kill('SIGTERM');
-        reject(new Error('Download timeout'));
-      }, 300000);
+      // Extended timeout for larger files
+      const timeout = setTimeout(() => {
+        if (!downloadStarted) {
+          ytDlp.kill('SIGTERM');
+          reject(new Error('Download timeout - no response from server'));
+        } else {
+          // If download started, give more time
+          setTimeout(() => {
+            ytDlp.kill('SIGTERM');
+            reject(new Error('Download timeout - taking too long'));
+          }, 300000); // Additional 5 minutes
+        }
+      }, 120000); // Initial 2 minutes
+      
+      ytDlp.on('close', () => {
+        clearTimeout(timeout);
+      });
       
     } catch (error) {
       reject(new Error(`${platform} download setup error: ${error.message}`));
     }
   });
+}
+
+function formatFileSize(bytes) {
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  if (bytes === 0) return '0 Bytes';
+  
+  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
 }
 
 module.exports = {
