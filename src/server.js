@@ -13,6 +13,9 @@ const config = require('./config/config');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Trust proxy for production deployments (must be before rate limiting)
+app.set('trust proxy', true);
+
 // Security middleware
 app.use(helmet({
   contentSecurityPolicy: false,
@@ -31,6 +34,11 @@ const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // increased limit for better UX
   message: { error: 'Too many requests, please try again later' },
+  trustProxy: true,
+  skip: (req) => {
+    // Skip rate limiting for health checks
+    return req.path === '/health';
+  },
   standardHeaders: true,
   legacyHeaders: false,
 });

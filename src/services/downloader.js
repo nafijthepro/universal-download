@@ -168,13 +168,15 @@ async function downloadWithYtDlp(url, format, quality, downloadId, info, platfor
         '--format', formatSelector,
         '--output', outputPath,
         '--no-playlist',
-        '--max-filesize', '500M',
+        '--max-filesize', '100M',
         '--socket-timeout', '60',
-        '--retries', '5',
-        '--fragment-retries', '5',
+        '--retries', '2',
+        '--fragment-retries', '2',
         '--no-warnings',
         '--no-check-certificates',
         '--prefer-ffmpeg',
+        '--no-call-home',
+        '--no-check-certificate',
         url
       ];
       
@@ -189,8 +191,9 @@ async function downloadWithYtDlp(url, format, quality, downloadId, info, platfor
       
       // Add additional options for better compatibility
       if (platform === 'youtube') {
-        args.push('--extractor-args');
-        args.push('youtube:player_client=android');
+        args.push('--extractor-args', 'youtube:player_client=android');
+        args.push('--user-agent', 'com.google.android.youtube/17.31.35 (Linux; U; Android 11) gzip');
+        args.push('--add-header', 'Accept-Language:en-US,en;q=0.9');
       }
       
       console.log(`Using yt-dlp for ${platform}:`, args.slice(0, -1).join(' '), '[URL]');
@@ -232,15 +235,17 @@ async function downloadWithYtDlp(url, format, quality, downloadId, info, platfor
               await fs.remove(outputPath);
             } catch (e) {}
             
-            let errorMessage = 'Download failed';
+            let errorMessage = `Download failed with exit code ${code}`;
             
-            if (errorOutput.includes('Video unavailable')) {
+            console.error(`yt-dlp failed with code ${code}:`, errorOutput);
+            
+            if (errorOutput.includes('Video unavailable') || errorOutput.includes('not available')) {
               errorMessage = 'Video is unavailable or private';
-            } else if (errorOutput.includes('Sign in to confirm')) {
+            } else if (errorOutput.includes('Sign in to confirm') || errorOutput.includes('bot')) {
               errorMessage = 'Video requires sign-in or is age-restricted';
             } else if (errorOutput.includes('Private video')) {
               errorMessage = 'Cannot download private video';
-            } else if (errorOutput.includes('This video is not available')) {
+            } else if (errorOutput.includes('not available') || errorOutput.includes('region')) {
               errorMessage = 'Video is not available in your region';
             } else if (errorOutput.includes('HTTP Error 403')) {
               errorMessage = 'Access denied - video may be restricted';
@@ -248,9 +253,15 @@ async function downloadWithYtDlp(url, format, quality, downloadId, info, platfor
               errorMessage = 'No downloadable formats found';
             } else if (errorOutput.includes('Unsupported URL')) {
               errorMessage = 'Unsupported URL or platform';
+            } else if (errorOutput.includes('ERROR')) {
+              // Extract the actual error message
+              const errorMatch = errorOutput.match(/ERROR: (.+?)(?:\n|$)/);
+              if (errorMatch) {
+                errorMessage = errorMatch[1];
+              }
             }
             
-            throw new Error(`${errorMessage} (Code: ${code})`);
+            throw new Error(errorMessage);
           }
           
           // Check if file exists and has content
@@ -302,15 +313,14 @@ async function downloadWithYtDlp(url, format, quality, downloadId, info, platfor
       const timeout = setTimeout(() => {
         if (!downloadStarted) {
           ytDlp.kill('SIGTERM');
-          reject(new Error('Download timeout - no response from server'));
+          reject(new Error('Download timeout - server took too long to respond'));
         } else {
           // If download started, give more time
           setTimeout(() => {
             ytDlp.kill('SIGTERM');
-            reject(new Error('Download timeout - taking too long'));
-          }, 300000); // Additional 5 minutes
+            reject(new Error('Download timeout - file too large or slow connection'));
+          }, 180000); // Additional 3 minutes
         }
-      }, 120000); // Initial 2 minutes
       
       ytDlp.on('close', () => {
         clearTimeout(timeout);
